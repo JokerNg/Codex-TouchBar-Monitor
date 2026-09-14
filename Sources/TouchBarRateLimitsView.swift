@@ -118,6 +118,7 @@ final class TouchBarRateLimitsView: NSView {
 
     func updateLocalUsage(_ usage: LocalUsageSnapshot?, warning: String?) {
         localUsage = usage
+        heatmapView.localUsage = usage
         localUsageWarning = warning
         localCostView.update(snapshot: usage, warning: warning)
         reconcilePage()
@@ -369,7 +370,9 @@ final class TouchBarRateLimitsView: NSView {
     private var availablePages: [TouchBarPage] {
         var pages: [TouchBarPage] = []
         if hasResetCredits { pages.append(.cards) }
-        if !heatmapView.buckets.isEmpty { pages.append(.heatmap) }
+        if !heatmapView.buckets.isEmpty || localUsage.map({ Calendar.current.isDateInToday($0.day) }) == true {
+            pages.append(.heatmap)
+        }
         pages.append(.cost)
         return pages
     }
@@ -694,29 +697,31 @@ private final class UsageHeatmapView: NSView {
     var buckets: [DailyUsageBucket] = [] {
         didSet { needsDisplay = true }
     }
+    var localUsage: LocalUsageSnapshot? {
+        didSet { needsDisplay = true }
+    }
 
     override var isFlipped: Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
 
-        guard let latestKey = buckets.map(\.startDate).max(),
-              let latestDate = Self.dateFormatter.date(from: latestKey) else {
-            return
-        }
-
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current
-        calendar.firstWeekday = 2
+        calendar.firstWeekday = 1
 
-        let weekdayOffset = (calendar.component(.weekday, from: latestDate) + 5) % 7
-        guard let latestWeekStart = calendar.date(byAdding: .day, value: -weekdayOffset, to: latestDate),
+        let today = calendar.startOfDay(for: Date())
+        let weekdayOffset = calendar.component(.weekday, from: today) - 1
+        guard let latestWeekStart = calendar.date(byAdding: .day, value: -weekdayOffset, to: today),
               let firstWeekStart = calendar.date(byAdding: .day, value: -25 * 7, to: latestWeekStart) else {
             return
         }
 
-        let totals = Dictionary(grouping: buckets, by: \.startDate)
+        var totals = Dictionary(grouping: buckets, by: \.startDate)
             .mapValues { $0.reduce(0) { $0 + $1.tokens } }
+        if let localUsage, calendar.isDate(localUsage.day, inSameDayAs: today) {
+            totals[Self.dateFormatter.string(from: today)] = LocalUsageSnapshot.total(localUsage.today).tokens
+        }
         let cellSize = NSSize(width: 3, height: 3)
         let gap = NSSize(width: 1, height: 1)
         let gridWidth = 26 * cellSize.width + 25 * gap.width
@@ -733,7 +738,7 @@ private final class UsageHeatmapView: NSView {
                     byAdding: .day,
                     value: week * 7 + day,
                     to: firstWeekStart
-                ) else {
+                ), date <= today else {
                     continue
                 }
 
