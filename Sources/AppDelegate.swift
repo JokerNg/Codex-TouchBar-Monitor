@@ -1,6 +1,12 @@
 import AppKit
+import Sparkle
 
 final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate, NSMenuDelegate {
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let store = RateLimitStore()
     private let localUsage = LocalUsageCost()
@@ -20,6 +26,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
     private var hideStatusItemMenuItem: NSMenuItem?
     private var quitMenuItem: NSMenuItem?
     private var languageMenuItem: NSMenuItem?
+    private var autoUpdateMenuItem: NSMenuItem?
+    private var checkUpdatesMenuItem: NSMenuItem?
     private var languageSubmenuItems: [AppLanguage: NSMenuItem] = [:]
     private let touchBarController = TouchBarController()
     private var latestState = RateLimitDisplayState.initial
@@ -169,6 +177,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
         menu.addItem(autoLaunchItem)
         autoLaunchMenuItem = autoLaunchItem
 
+        let autoUpdateItem = NSMenuItem(
+            title: L10n.autoUpdate,
+            action: #selector(toggleAutoUpdate(_:)),
+            keyEquivalent: ""
+        )
+        autoUpdateItem.target = self
+        menu.addItem(autoUpdateItem)
+        autoUpdateMenuItem = autoUpdateItem
+
+        let checkUpdatesItem = NSMenuItem(
+            title: L10n.checkForUpdates,
+            action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+            keyEquivalent: ""
+        )
+        checkUpdatesItem.target = updaterController
+        menu.addItem(checkUpdatesItem)
+        checkUpdatesMenuItem = checkUpdatesItem
+        updateUpdaterMenuState()
+
         let hideStatusItem = NSMenuItem(
             title: L10n.hideStatusItem,
             action: #selector(hideStatusItemFromMenu(_:)),
@@ -193,6 +220,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
 
     func menuWillOpen(_ menu: NSMenu) {
         refreshLocalUsage()
+        updateUpdaterMenuState()
     }
 
     private func refreshLocalUsage(force: Bool = false) {
@@ -318,6 +346,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
         }
     }
 
+    private func updateUpdaterMenuState() {
+        autoUpdateMenuItem?.state = updaterController.updater.automaticallyChecksForUpdates
+            && updaterController.updater.automaticallyDownloadsUpdates ? .on : .off
+        checkUpdatesMenuItem?.isEnabled = updaterController.updater.canCheckForUpdates
+    }
+
     private func updateMenuLanguage() {
         updateUsageMenu()
         updateDefaultPageMenu()
@@ -325,6 +359,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
         refreshDataMenuItem?.title = L10n.refreshData
         reloadTouchBarMenuItem?.title = L10n.reloadTouchBar
         autoLaunchMenuItem?.title = L10n.followCodex
+        autoUpdateMenuItem?.title = L10n.autoUpdate
+        checkUpdatesMenuItem?.title = L10n.checkForUpdates
         hideStatusItemMenuItem?.title = L10n.hideStatusItem
         quitMenuItem?.title = L10n.quit
         for (language, item) in languageSubmenuItems {
@@ -364,6 +400,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
     @objc private func toggleAutoLaunchFromMenu(_ sender: NSMenuItem) {
         CodexAutoLauncher.setFollowsCodexLaunch(sender.state != .on)
         autoLaunchMenuItem?.state = CodexAutoLauncher.followsCodexLaunch ? .on : .off
+    }
+
+    @objc private func toggleAutoUpdate(_ sender: NSMenuItem) {
+        let enabled = sender.state != .on
+        updaterController.updater.automaticallyChecksForUpdates = enabled
+        updaterController.updater.automaticallyDownloadsUpdates = enabled
+        updateUpdaterMenuState()
     }
 
     @objc private func hideStatusItemFromMenu(_ sender: AnyObject?) {

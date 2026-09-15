@@ -1,4 +1,6 @@
-# CodexTouchBarMonitor
+# Codex Touch Bar Monitor
+
+A native macOS Touch Bar monitor for OpenAI Codex quota, token usage, reset times, usage heatmap, and estimated cost.
 
 CodexTouchBarMonitor 是一个专注 Touch Bar 的 macOS 工具，通过本机 Codex app-server 读取额度和 Token 用量，并持续显示在 Touch Bar 上。菜单栏仅作为控制入口，不显示额度。
 
@@ -80,6 +82,7 @@ Touch Bar 包括：
 - 立即刷新数据。
 - 重新加载 Touch Bar。
 - 开关“随 Codex 自动启动”。
+- 开关自动更新，或手动检查更新并选择下载安装。
 - 查看连接状态和最后更新时间。
 - 设置界面语言：跟随系统、中文或 English。
 - 设置 Touch Bar 默认页面：记住上次、自动轮播（10 秒），或固定页面。
@@ -104,7 +107,7 @@ open build/CodexTouchBarMonitor.app
 scripts/package-dmg.sh
 ```
 
-输出文件为 `dist/CodexTouchBarMonitor-0.1.16.dmg`。当前构建使用 ad-hoc 签名，首次打开时 macOS 可能提示无法验证开发者；可在 Finder 中右键 App，选择“打开”。
+输出文件名跟随 `Info.plist` 中的版本号。当前构建使用 ad-hoc 签名，首次打开时 macOS 可能提示无法验证开发者；可在 Finder 中右键 App，选择“打开”。
 
 开发期直接运行：
 
@@ -136,7 +139,7 @@ scripts/make-app-icon.py
 
 ## 隐私
 
-CodexTouchBarMonitor 不保存密码、API Key、授权码或账号凭据。额度来自本机 Codex app-server，会话日志在本机解析；网络请求仅用于下载公开价格表，不上传会话内容或用量数据。
+CodexTouchBarMonitor 不保存密码、API Key、授权码或账号凭据。额度来自本机 Codex app-server，会话日志在本机解析；网络请求仅用于下载公开价格表，以及从 GitHub 获取更新信息和更新包，不上传会话内容或用量数据。
 
 ## 许可证
 

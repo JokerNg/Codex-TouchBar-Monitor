@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>CodexTouchBarMonitor Updates</title>
+    <item>
+      <title>0.1.18</title>
+      <pubDate>Tue, 15 Sep 2026 09:44:01 +0000</pubDate>
+      <sparkle:version>19</sparkle:version>
+      <sparkle:shortVersionString>0.1.18</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/JokerNg/Codex-TouchBar-Monitor/releases/download/v0.1.18/CodexTouchBarMonitor-0.1.18.dmg"
+        sparkle:edSignature="9LReXL1gmPEvt4+H1W7yKo4d7zKpfQACRMBRLdUTv1wSBzu+b8QSoAMH0BLpCa9iYMg/86ychXi34/IOHtT6Ag=="
+        length="2743642"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>

@@ -50,6 +50,8 @@ enum L10n {
     static var refreshData: String { isEnglish ? "Refresh Data" : "立即刷新数据" }
     static var reloadTouchBar: String { isEnglish ? "Reload Touch Bar" : "重新加载 Touch Bar" }
     static var followCodex: String { isEnglish ? "Launch with Codex" : "随 Codex 自动启动" }
+    static var autoUpdate: String { isEnglish ? "Automatically Update" : "自动更新" }
+    static var checkForUpdates: String { isEnglish ? "Check for Updates…" : "检查更新…" }
     static var hideStatusItem: String { isEnglish ? "Hide Menu Bar Icon" : "隐藏菜单栏图标" }
     static var quit: String { isEnglish ? "Quit" : "退出" }
     static var refreshNow: String { isEnglish ? "Refresh now" : "立即刷新" }

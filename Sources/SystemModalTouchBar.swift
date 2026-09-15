@@ -16,11 +16,12 @@ enum SystemModalTouchBar {
 
     static func present(_ touchBar: NSTouchBar) -> Bool {
         let touchBarClass = NSTouchBar.self as AnyObject
-        guard touchBarClass.responds(to: presentSelector) else {
+        guard touchBarClass.responds(to: presentSelector),
+              let trayIdentifier = touchBar.customizationIdentifier else {
             return false
         }
 
-        _ = touchBarClass.perform(presentSelector, with: touchBar, with: nil)
+        _ = touchBarClass.perform(presentSelector, with: touchBar, with: trayIdentifier as NSString)
         return true
     }
 
