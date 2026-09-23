@@ -26,6 +26,8 @@ struct LocalUsageSnapshot {
 final class LocalUsageCost {
     private var refreshing = false
     private var lastRefresh = Date.distantPast
+    // ponytail: in-memory retry cap; persist it only if app restarts cause noisy retries.
+    private var lastPriceRefreshAttempt = Date.distantPast
     private let cacheURL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
         .appendingPathComponent("CodexTouchBarMonitor/litellm-prices.json")
 
@@ -37,37 +39,46 @@ final class LocalUsageCost {
         DispatchQueue.global(qos: .utility).async {
             let cached = try? Data(contentsOf: cacheURL)
             let modified = try? cacheURL.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            let finish: (Data?, String?) -> Void = { data, priceWarning in
-                DispatchQueue.global(qos: .utility).async {
-                    let prices = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: [String: Any]] } ?? [:]
-                    let (usage, warning) = Self.scan(prices: prices)
-                    DispatchQueue.main.async {
-                        self.refreshing = false
-                        guard Calendar.current.isDateInToday(usage.day) else {
-                            self.refresh(force: true, completion: completion)
-                            return
-                        }
-                        self.lastRefresh = Date()
-                        completion(usage, warning ?? priceWarning)
+            let cachedPrices = cached.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: [String: Any]] } ?? [:]
+            let cacheIsFresh = cachedPrices.values.contains(where: { $0["input_cost_per_token"] is Double })
+                && modified.map { Date().timeIntervalSince($0) < 86400 } == true
+            let cachedScan = Self.scan(prices: cachedPrices)
+            let complete: (LocalUsageSnapshot, String?, String?) -> Void = { usage, warning, priceWarning in
+                DispatchQueue.main.async {
+                    self.refreshing = false
+                    guard Calendar.current.isDateInToday(usage.day) else {
+                        self.refresh(force: true, completion: completion)
+                        return
                     }
+                    self.lastRefresh = Date()
+                    completion(usage, warning ?? priceWarning)
                 }
             }
-            if cached != nil, let modified, Date().timeIntervalSince(modified) < 86400 {
-                finish(cached, nil)
-                return
-            }
-            let url = URL(string: "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json")!
-            URLSession.shared.dataTask(with: URLRequest(url: url, timeoutInterval: 20)) { data, response, _ in
-                guard let data, (response as? HTTPURLResponse)?.statusCode == 200,
-                      let prices = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]],
-                      prices.values.contains(where: { $0["input_cost_per_token"] is Double }) else {
-                    finish(cached, L10n.isEnglish ? "Prices unavailable or cached" : "价格更新失败，使用缓存或显示未知")
+            DispatchQueue.main.async {
+                let needsPriceRefresh = !cacheIsFresh || cachedScan.hasUnpricedUsage
+                guard needsPriceRefresh,
+                      force || Date().timeIntervalSince(self.lastPriceRefreshAttempt) >= 300 else {
+                    complete(cachedScan.snapshot, cachedScan.warning, nil)
                     return
                 }
-                try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try? data.write(to: cacheURL, options: .atomic)
-                finish(data, nil)
-            }.resume()
+                self.lastPriceRefreshAttempt = Date()
+                let url = URL(string: "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json")!
+                URLSession.shared.dataTask(with: URLRequest(url: url, timeoutInterval: 20)) { data, response, _ in
+                    guard let data, (response as? HTTPURLResponse)?.statusCode == 200,
+                          let prices = try? JSONSerialization.jsonObject(with: data) as? [String: [String: Any]],
+                          prices.values.contains(where: { $0["input_cost_per_token"] is Double }) else {
+                        complete(cachedScan.snapshot, cachedScan.warning,
+                            L10n.isEnglish ? "Prices unavailable or cached" : "价格更新失败，使用缓存或显示未知")
+                        return
+                    }
+                    try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    try? data.write(to: cacheURL, options: .atomic)
+                    DispatchQueue.global(qos: .utility).async {
+                        let refreshedScan = Self.scan(prices: prices)
+                        complete(refreshedScan.snapshot, refreshedScan.warning, nil)
+                    }
+                }.resume()
+            }
         }
     }
 
@@ -95,7 +106,7 @@ final class LocalUsageCost {
     }
 
     static func scan(root: URL = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".codex/sessions"),
-                     now: Date = Date(), calendar: Calendar = .current, prices: [String: [String: Any]] = [:]) -> (LocalUsageSnapshot, String?) {
+                     now: Date = Date(), calendar: Calendar = .current, prices: [String: [String: Any]] = [:]) -> (snapshot: LocalUsageSnapshot, warning: String?, hasUnpricedUsage: Bool) {
         let start = calendar.startOfDay(for: now)
         let yesterday = calendar.date(byAdding: .day, value: -1, to: start)!
         let end = calendar.date(byAdding: .day, value: 1, to: start)!
@@ -107,13 +118,14 @@ final class LocalUsageCost {
                 return true
             }) else {
                 snapshot.isComplete = false
-                return (snapshot, L10n.isEnglish ? "Session directory unavailable" : "无法读取会话目录")
+                return (snapshot, L10n.isEnglish ? "Session directory unavailable" : "无法读取会话目录", false)
             }
         let dateParser = ISO8601DateFormatter()
         dateParser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let secondsParser = ISO8601DateFormatter()
         var days: [Date: [String: LocalModelUsage]] = [:]
         var seen = Set<String>()
+        var hasUnpricedUsage = false
         // ponytail: rescan files modified since yesterday; add offsets if scanning becomes slow.
         for case let file as URL in files where file.pathExtension == "jsonl" {
             if let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
@@ -153,16 +165,21 @@ final class LocalUsageCost {
                     max(0, reset ? (last?[name] ?? 0) : (total[name] ?? 0) - (old?[name] ?? 0))
                 }
                 let input = delta("input_tokens")
-                let request = LocalModelUsage(input: input, cached: min(input, delta("cached_input_tokens")), output: delta("output_tokens"))
+                let output = delta("output_tokens")
+                // Ignore cumulative baselines and reasoning-only updates with no billable tokens.
+                guard input > 0 || output > 0 else { return }
+                let request = LocalModelUsage(input: input, cached: min(input, delta("cached_input_tokens")), output: output)
                 let pricingModel = model == "codex-auto-review" ? "gpt-5.6-luna" : model
-                let requestCost = delta("cache_write_input_tokens") == 0
-                    ? Self.cost(request, price: prices[pricingModel] ?? prices["openai/" + pricingModel]) : nil
+                let price = prices[pricingModel] ?? prices["openai/" + pricingModel]
+                let cacheWrite = delta("cache_write_input_tokens")
+                let requestCost = cacheWrite == 0 ? Self.cost(request, price: price) : nil
+                if price == nil || (cacheWrite == 0 && requestCost == nil) { hasUnpricedUsage = true }
                 var usage = days[day]?[model] ?? LocalModelUsage(cost: 0)
                 if let accumulated = usage.cost, let requestCost { usage.cost = accumulated + requestCost }
                 else { usage.cost = nil }
                 usage.input += input
                 usage.cached += min(input, delta("cached_input_tokens"))
-                usage.output += delta("output_tokens")
+                usage.output += output
                 days[day, default: [:]][model] = usage
             }
             do {
@@ -181,6 +198,6 @@ final class LocalUsageCost {
         snapshot.today = days[start] ?? [:]
         snapshot.yesterday = days[yesterday] ?? [:]
         snapshot.isComplete = warning == nil
-        return (snapshot, warning)
+        return (snapshot, warning, hasUnpricedUsage)
     }
 }
