@@ -38,11 +38,12 @@ account/usage/read
 
 Local cost statistics recursively scan JSONL files under `~/.codex/sessions/` and aggregate them by local date and model. Prices come from the [public LiteLLM price table](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json), refreshed daily and cached at `~/Library/Caches/CodexTouchBarMonitor/litellm-prices.json`.
 
-Dollar values are estimates based on current API prices, not Codex subscription charges. `codex-auto-review` is priced as `gpt-5.6-luna`; models without a matching price are shown as unknown. Today's cost is compared with the complete previous day, and cache hit rate is cached input tokens divided by all input tokens.
+Dollar values are estimates based on current API prices, not Codex subscription charges. `codex-auto-review` is counted at $0 while its token usage is retained; other models without a matching price are shown as unknown. Today's cost is compared with the complete previous day, and cache hit rate is cached input tokens divided by all input tokens.
 
-The app automatically looks for Codex at:
+The app first checks its `PATH` for an executable `codex`, then checks these app locations:
 
 ```text
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
 /Applications/ChatGPT.app/Contents/Resources/codex
 /Applications/Codex.app/Contents/Resources/codex
 /Applications/GPT.app/Contents/Resources/codex

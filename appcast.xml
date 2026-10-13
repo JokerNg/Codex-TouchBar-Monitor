@@ -3,15 +3,15 @@
   <channel>
     <title>CodexTouchBarMonitor Updates</title>
     <item>
-      <title>0.1.19</title>
-      <pubDate>Wed, 23 Sep 2026 02:07:57 +0000</pubDate>
-      <sparkle:version>20</sparkle:version>
-      <sparkle:shortVersionString>0.1.19</sparkle:shortVersionString>
+      <title>0.1.20</title>
+      <pubDate>Tue, 13 Oct 2026 01:28:23 +0000</pubDate>
+      <sparkle:version>21</sparkle:version>
+      <sparkle:shortVersionString>0.1.20</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/JokerNg/Codex-TouchBar-Monitor/releases/download/v0.1.19/CodexTouchBarMonitor-0.1.19.dmg"
-        sparkle:edSignature="/xEwLhwzTyJ7p3XtKiiDpxk4B67ldH3hWDSp5KpCk9qfA63CAW67ewyTM6F25KPUQ6oPCGbpg9BbcPccSRtrDg=="
-        length="2962007"
+        url="https://github.com/JokerNg/Codex-TouchBar-Monitor/releases/download/v0.1.20/CodexTouchBarMonitor-0.1.20.dmg"
+        sparkle:edSignature="vu7xMwiYa6qCblAt8ibJHnKazgwOqlqgaZTRrXSev5fvYq0nEip6XWp4dK7ysqHtg+aTAu8uv7tkseQpbM+6Bg=="
+        length="2965724"
         type="application/octet-stream" />
     </item>
   </channel>

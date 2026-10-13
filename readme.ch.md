@@ -38,11 +38,12 @@ account/usage/read
 
 本地费用统计会递归扫描 `~/.codex/sessions/` 下的 JSONL 文件，并按本地日期和模型汇总。价格来自 [LiteLLM 公开价格表](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json)，每天更新，并缓存到 `~/Library/Caches/CodexTouchBarMonitor/litellm-prices.json`。
 
-美元金额仅是按当前 API 价格计算的估算值，不代表 Codex 订阅账单。`codex-auto-review` 按 `gpt-5.6-luna` 计价；没有匹配价格的模型显示为未知。今日费用会与完整的昨日数据比较；缓存命中率 = 缓存输入 Token ÷ 全部输入 Token。
+美元金额仅是按当前 API 价格计算的估算值，不代表 Codex 订阅账单。`codex-auto-review` 的费用按 0 美元统计，仍保留 Token 用量；其他没有匹配价格的模型显示为未知。今日费用会与完整的昨日数据比较；缓存命中率 = 缓存输入 Token ÷ 全部输入 Token。
 
-应用会自动查找以下 Codex 可执行文件：
+应用先从自身的 `PATH` 查找可执行的 `codex`，再检查以下应用目录：
 
 ```text
+/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex
 /Applications/ChatGPT.app/Contents/Resources/codex
 /Applications/Codex.app/Contents/Resources/codex
 /Applications/GPT.app/Contents/Resources/codex

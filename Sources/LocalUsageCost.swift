@@ -169,11 +169,15 @@ final class LocalUsageCost {
                 // Ignore cumulative baselines and reasoning-only updates with no billable tokens.
                 guard input > 0 || output > 0 else { return }
                 let request = LocalModelUsage(input: input, cached: min(input, delta("cached_input_tokens")), output: output)
-                let pricingModel = model == "codex-auto-review" ? "gpt-5.6-luna" : model
-                let price = prices[pricingModel] ?? prices["openai/" + pricingModel]
-                let cacheWrite = delta("cache_write_input_tokens")
-                let requestCost = cacheWrite == 0 ? Self.cost(request, price: price) : nil
-                if price == nil || (cacheWrite == 0 && requestCost == nil) { hasUnpricedUsage = true }
+                let requestCost: Double?
+                if model == "codex-auto-review" {
+                    requestCost = 0
+                } else {
+                    let price = prices[model] ?? prices["openai/" + model]
+                    let cacheWrite = delta("cache_write_input_tokens")
+                    requestCost = cacheWrite == 0 ? Self.cost(request, price: price) : nil
+                    if price == nil || (cacheWrite == 0 && requestCost == nil) { hasUnpricedUsage = true }
+                }
                 var usage = days[day]?[model] ?? LocalModelUsage(cost: 0)
                 if let accumulated = usage.cost, let requestCost { usage.cost = accumulated + requestCost }
                 else { usage.cost = nil }

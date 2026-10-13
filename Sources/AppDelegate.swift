@@ -285,8 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, RateLimitStoreDelegate
             let usage = modelUsage[model]!
             let cost = usage.cost.map { String(format: "$%.4f", $0) }
                 ?? (L10n.isEnglish ? "Price unknown" : "价格未知")
-            let label = model == "codex-auto-review" ? "\(model) (≈ gpt-5.6-luna)" : model
-            add("\(label): \(NumberFormatter.localizedString(from: NSNumber(value: usage.tokens), number: .decimal)) tokens · \(cost) · \(L10n.cacheRate(usage))")
+            add("\(model): \(NumberFormatter.localizedString(from: NSNumber(value: usage.tokens), number: .decimal)) tokens · \(cost) · \(L10n.cacheRate(usage))")
         }
         if modelUsage.isEmpty {
             add(usageSnapshot != nil ? (L10n.isEnglish ? "No usage today" : "今日暂无用量") : (L10n.isEnglish ? "Loading…" : "读取中…"))

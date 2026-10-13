@@ -23,11 +23,18 @@ enum CodexAppServerError: LocalizedError {
 final class CodexAppServerClient {
     typealias JSONDictionary = [String: Any]
 
-    private let codexCandidates = [
-        "/Applications/ChatGPT.app/Contents/Resources/codex",
-        "/Applications/Codex.app/Contents/Resources/codex",
-        "/Applications/GPT.app/Contents/Resources/codex"
-    ].map(URL.init(fileURLWithPath:))
+    private let codexCandidates: [URL] = {
+        let pathCandidates = ProcessInfo.processInfo.environment["PATH"]?
+            .split(separator: ":")
+            .map { URL(fileURLWithPath: String($0)).appendingPathComponent("codex") } ?? []
+        let appCandidates = [
+            "/Applications/ChatGPT.app/Contents/Resources/codex-cli/bin/codex",
+            "/Applications/ChatGPT.app/Contents/Resources/codex",
+            "/Applications/Codex.app/Contents/Resources/codex",
+            "/Applications/GPT.app/Contents/Resources/codex"
+        ].map(URL.init(fileURLWithPath:))
+        return pathCandidates + appCandidates
+    }()
     private let queue = DispatchQueue(label: "CodexTouchBarMonitor.CodexAppServerClient")
 
     private var process: Process?
